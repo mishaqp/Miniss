@@ -367,7 +367,9 @@ internal class MinissAssistantOverlayService : Service(), LifecycleOwner, SavedS
         windowVisible = false
 
         val vm = viewModel
-        vm?.cancelStream()
+        if (vm?.isStreaming?.value == true) {
+            vm.cancelStream()
+        }
         serviceScope.launch {
             delay(CLOSE_ANIMATION_MS)
             removeWindow()
