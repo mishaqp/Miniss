@@ -50,6 +50,19 @@ Test-only dependencies: JUnit 4.13.2 (**EPL-1.0**), MockWebServer 4.12.0 (**Apac
 | KaTeX | Android `app/src/main/assets/katex/` | **MIT** |
 | jieba dictionaries | iOS bundle / Android `assets/jieba/` | **MIT** (cppjieba distribution) |
 
+## Eta assistant overlay architecture
+
+The Android service-owned overlay lifecycle and panel interaction pattern in
+`MinissAssistantOverlayService.kt` and `MinissAssistPanel.kt` are adapted from
+the user's `eta-ru` project (Eta/Mangi). The Miniss implementation uses its
+own `ChatViewModel` runtime and does not copy Eta's agent runtime.
+
+Required Notice: Copyright © 2026 蛮吉 (Mangi-11).
+
+Eta portions are used under the **PolyForm Noncommercial License 1.0.0**;
+see the upstream Eta `LICENSE` for the complete terms. This attribution is
+kept here and in the adapted source files.
+
 ## Removed / historical
 
 - **swift-markdown-ui** (MIT) — formerly vendored under `deps/swift-markdown-ui`; no longer referenced by the Xcode project or imported by any source file, and is not part of the open-source tree.

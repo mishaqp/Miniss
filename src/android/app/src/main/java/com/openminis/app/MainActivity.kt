@@ -289,6 +289,20 @@ class MainActivity : ComponentActivity() {
             return
         }
 
+        // Some ROMs dispatch the assistant gesture through the activity alias
+        // instead of VoiceInteractionSession. This activity is only a
+        // compatibility bridge: the visible surface belongs to the single
+        // TYPE_APPLICATION_OVERLAY service, so never compose the full app for
+        // an ordinary assist invocation.
+        if (isAssistEntryIntent(intent)) {
+            com.openminis.app.assist.MinissAssistantOverlayService.show(
+                this,
+                trigger = intent,
+            )
+            finish()
+            return
+        }
+
         // T166: if we were killed by LMK while the user was inside a
         // chat, restore the sessionId now so the synthesised deep-link
         // re-opens it before any composable is composed. ChatViewModel
@@ -715,6 +729,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        if (isAssistEntryIntent(intent)) {
+            com.openminis.app.assist.MinissAssistantOverlayService.show(
+                this,
+                trigger = intent,
+            )
+            return
+        }
         // T51: warm-start share — ShareReceiverActivity re-launches with
         // FLAG_ACTIVITY_CLEAR_TOP, which delivers the new intent here when
         // MainActivity is already alive. Process the buffered share before
@@ -746,6 +767,13 @@ class MainActivity : ComponentActivity() {
 
     private fun handleDeepLink(intent: Intent?) {
         val nav = navController ?: return
+        if (isAssistEntryIntent(intent)) {
+            com.openminis.app.assist.MinissAssistantOverlayService.show(
+                this,
+                trigger = intent,
+            )
+            return
+        }
         // [T-assist-screenshot] 热启动 assist 入口同样尽早发射截屏（窗口上屏前）。
         if (isAssistEntryIntent(intent)) {
             com.openminis.app.assist.AssistCapture.requestIfEnabled(this, intent)

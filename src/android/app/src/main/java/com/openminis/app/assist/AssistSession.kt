@@ -2,24 +2,21 @@ package com.openminis.app.assist
 
 import android.app.assist.AssistContent
 import android.app.assist.AssistStructure
-import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.service.voice.VoiceInteractionSession
-import com.openminis.app.deeplink.DeepLinkCoordinator
 import com.openminis.app.logging.AppLogger
 
 /**
  * One system-assistant session. Android may deliver current-screen assist data
  * (AssistStructure + AssistContent) and optionally a screenshot. The session
- * hands those into Minis through the existing deep-link + pending payload path.
+ * hands those into the shared Miniss assistant overlay service.
  *
  * Some Android/OEM builds correctly select Minis as the active assistant and
  * show the VoiceInteractionSession, but never deliver onHandleAssist(). In that
- * case the previous implementation stayed completely invisible forever because
- * launchMinisChat() was only reached from onHandleAssist().
+ * case the overlay must still appear even without a framework payload.
  *
  * To make invocation reliable, onShow() now arms a short fallback. If no assist
  * payload arrives in time, Minis still opens a fresh assist chat. Right before
@@ -35,6 +32,7 @@ class AssistSession(context: android.content.Context) :
     @Volatile private var frameworkShot: Bitmap? = null
     private var showWithScreenshot = false
     private var handedOff = false
+    private var fallbackRunnable: Runnable? = null
 
     private val SCREENSHOT_WAIT_MS = 350L
     private val ASSIST_PAYLOAD_FALLBACK_MS = 700L
@@ -49,24 +47,30 @@ class AssistSession(context: android.content.Context) :
         // session but never send onHandleAssist(). Without this fallback the
         // session has no visible content and appears to the user as if nothing
         // happened at all.
-        mainHandler.postDelayed({
-            if (handedOff) return@postDelayed
-            AppLogger.warning(
-                TAG,
-                "assist payload not delivered after ${ASSIST_PAYLOAD_FALLBACK_MS}ms; opening Minis fallback",
-            )
-            // Capture before MainActivity comes to foreground. ChatScreen will
-            // consume the pending Accessibility screenshot, if one succeeds.
-            AssistCapture.requestIfEnabled(context)
-            handoff(ctx = "", allowEmpty = true)
-        }, ASSIST_PAYLOAD_FALLBACK_MS)
+        val fallback = Runnable {
+            if (!handedOff) {
+                AppLogger.warning(
+                    TAG,
+                    "assist payload not delivered after ${ASSIST_PAYLOAD_FALLBACK_MS}ms; opening Minis fallback",
+                )
+                // If the framework did not deliver a screenshot, the overlay
+                // service bridge starts Accessibility capture before its window.
+                handoff(ctx = "")
+            }
+        }
+        fallbackRunnable = fallback
+        mainHandler.postDelayed(fallback, ASSIST_PAYLOAD_FALLBACK_MS)
     }
 
     override fun onHandleScreenshot(screenshot: Bitmap?) {
         super.onHandleScreenshot(screenshot)
         if (screenshot != null) {
-            frameworkShot = screenshot
-            AppLogger.info(TAG, "framework screenshot received")
+            if (handedOff) {
+                screenshot.recycle()
+            } else {
+                frameworkShot = screenshot
+                AppLogger.info(TAG, "framework screenshot received")
+            }
         }
     }
 
@@ -88,15 +92,15 @@ class AssistSession(context: android.content.Context) :
     }
 
     /**
-     * Unified handoff: persist a framework screenshot when present, publish a
-     * pending assist payload, open a new Minis assist chat, then close the voice
-     * session. [allowEmpty] is used only by the reliability fallback so an
-     * invocation still opens Minis even when Android supplied neither text nor
-     * screenshot.
+     * Unified handoff: persist a framework screenshot when present, pass the
+     * screen text and image to the shared overlay, then close the voice session.
+     * An empty payload is valid: the user should still get the assistant panel.
      */
-    private fun handoff(ctx: String, allowEmpty: Boolean = false) {
+    private fun handoff(ctx: String) {
         if (handedOff) return
         handedOff = true
+        fallbackRunnable?.let(mainHandler::removeCallbacks)
+        fallbackRunnable = null
 
         var shotPath: String? = null
         val shot = frameworkShot
@@ -106,33 +110,11 @@ class AssistSession(context: android.content.Context) :
         shot?.recycle()
         frameworkShot = null
 
-        if (ctx.isBlank() && shotPath == null && !allowEmpty) {
-            AppLogger.warning(TAG, "no assist context and no screenshot; nothing to hand off")
-            finish()
-            return
-        }
-
-        DeepLinkCoordinator.setPendingAssist(
-            text = ctx.takeIf { it.isNotBlank() },
+        MinissAssistantOverlayService.show(
+            context = context,
+            initialContext = ctx.takeIf { it.isNotBlank() },
             screenshotPath = shotPath,
         )
-        launchMinisChat()
         finish()
-    }
-
-    private fun launchMinisChat() {
-        try {
-            val intent = Intent(Intent.ACTION_VIEW)
-                .setData(android.net.Uri.parse("minis://assist"))
-                .addFlags(
-                    Intent.FLAG_ACTIVITY_NEW_TASK or
-                        Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                        Intent.FLAG_ACTIVITY_CLEAR_TOP,
-                )
-            context.startActivity(intent)
-            AppLogger.info(TAG, "Minis assist chat launched")
-        } catch (t: Throwable) {
-            AppLogger.warning(TAG, "launch minis chat failed: ${t.message}")
-        }
     }
 }

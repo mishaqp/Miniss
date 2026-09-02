@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -86,6 +85,9 @@ internal fun MinissAssistPanel(
     viewModel: ChatViewModel,
     screenshot: File?,
     screenshotSelected: Boolean,
+    screenshotConsumed: Boolean,
+    screenContext: String?,
+    canOpenConversation: Boolean,
     visible: Boolean,
     onScreenshotSelectedChange: (Boolean) -> Unit,
     onSend: (String) -> Unit,
@@ -165,7 +167,7 @@ internal fun MinissAssistPanel(
                 ) {
                     Header(
                         modelName = modelName,
-                        canOpenConversation = rendered.isNotEmpty() && !isStreaming,
+                        canOpenConversation = canOpenConversation && rendered.isNotEmpty() && !isStreaming,
                         onOpenConversation = onOpenConversation,
                         onClose = onClose,
                     )
@@ -174,9 +176,14 @@ internal fun MinissAssistPanel(
                         ScreenshotContext(
                             file = screenshot,
                             selected = screenshotSelected,
-                            enabled = !isStreaming,
+                            consumed = screenshotConsumed,
+                            enabled = !isStreaming && !screenshotConsumed,
                             onSelectedChange = onScreenshotSelectedChange,
                         )
+                    }
+
+                    if (!screenContext.isNullOrBlank()) {
+                        ScreenContextHint(screenContext)
                     }
 
                     if (rendered.isEmpty()) {
@@ -348,6 +355,7 @@ private fun Header(
 private fun ScreenshotContext(
     file: File,
     selected: Boolean,
+    consumed: Boolean,
     enabled: Boolean,
     onSelectedChange: (Boolean) -> Unit,
 ) {
@@ -377,11 +385,19 @@ private fun ScreenshotContext(
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = if (selected) "Текущий экран прикреплён" else "Текущий экран не выбран",
+                    text = when {
+                        consumed -> "Текущий экран прикреплён к первому вопросу"
+                        selected -> "Текущий экран прикреплён"
+                        else -> "Текущий экран не выбран"
+                    },
                     style = MaterialTheme.typography.labelLarge,
                 )
                 Text(
-                    text = if (selected) "Нажмите, чтобы не отправлять" else "Нажмите, чтобы прикрепить",
+                    text = when {
+                        consumed -> "Можно продолжить разговор ниже"
+                        selected -> "Нажмите, чтобы не отправлять"
+                        else -> "Нажмите, чтобы прикрепить"
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -391,6 +407,29 @@ private fun ScreenshotContext(
                 contentDescription = null,
                 tint = if (selected) MaterialTheme.colorScheme.primary
                 else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ScreenContextHint(context: String) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp)) {
+            Text(
+                text = "Текстовый контекст экрана",
+                style = MaterialTheme.typography.labelLarge,
+            )
+            Text(
+                text = context.trim().take(320),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }

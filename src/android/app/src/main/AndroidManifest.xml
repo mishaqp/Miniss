@@ -280,15 +280,15 @@
              activity the framework falls back to Google's (which may not even
              run on the user's device — presenting as "nothing happens").
              Declaring VOICE_ASSIST + ASSIST here lets Minis be that entry
-             activity; MainActivity treats both actions the same as
-             DeepLinkAction.OpenAssist (new chat, consuming any
-             DeepLinkCoordinator.pendingAssist context if the VIS path happened
-             to write one first). -->
+             activity; MainActivity immediately hands the intent to the
+             TYPE_APPLICATION_OVERLAY assistant service and finishes this
+             compatibility bridge. -->
         <activity-alias
             android:name=".MainActivityVoiceAssist"
             android:targetActivity=".MainActivity"
             android:exported="true"
-            android:label="@string/app_name">
+            android:label="@string/app_name"
+            android:theme="@style/Theme.Minis.AssistBridge">
             <intent-filter>
                 <action android:name="android.intent.action.VOICE_ASSIST" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -634,12 +634,18 @@
              `pkgName`/`clazzName` 原本指向小米自家的
              com.xiaomi.voiceassistant.VoiceService（一个被系统 startService
              的服务）；改写为指向本服务后，系统以 startService 唤起它，再由它
-             打开 MainActivity 的 ACTION_ASSIST 入口（新会话）。
+             显示 MinissAssistantOverlayService（不打开 MainActivity）。
              exported=true 且不加任何权限：系统进程要以 startService 方式调用，
              签名权限会挡住系统；风险仅为第三方也可唤起 Minis 界面，属可接受。 -->
         <service
             android:name=".assist.AssistTriggerService"
             android:exported="true" />
+
+        <!-- Service-owned assistant panel. The exported trigger/session
+             components above are the only system entry points. -->
+        <service
+            android:name=".assist.MinissAssistantOverlayService"
+            android:exported="false" />
 
     </application>
 </manifest>
