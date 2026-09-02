@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="assist_overlay_prompt">Ask about what’s on your screen…</string>
+    <string name="assist_overlay_screen_attached">Current screen attached</string>
+    <string name="assist_overlay_no_screen">Screen capture is unavailable. You can still ask a question.</string>
+    <string name="assist_overlay_capturing">Capturing current screen…</string>
+    <string name="assist_overlay_expand">Open full Miniss chat</string>
+    <string name="assist_overlay_close">Close assistant</string>
+    <string name="assist_overlay_voice">Start voice chat</string>
+    <string name="assist_overlay_send">Send</string>
+</resources>
