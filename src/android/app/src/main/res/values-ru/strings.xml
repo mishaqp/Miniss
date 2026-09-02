@@ -1790,4 +1790,5 @@
     <string name="codex_resets_in">сброс через</string>
     <string name="codex_usage_unavailable">Данные о лимитах для этого аккаунта недоступны.</string>
 
+    <string name="settings_system_permissions_subtitle">Спецвозможности и захват экрана ассистентом</string>
 </resources>

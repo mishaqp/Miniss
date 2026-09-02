@@ -926,7 +926,7 @@ private fun OAuthCredentialBlock(
 
     if (instance.providerType == ProviderType.openAI && displayedKey.isNotEmpty()) {
         Spacer(modifier = Modifier.height(12.dp))
-        CodexAccountUsageBlock(
+        CodexAccountUsageCard(
             providerInstanceId = instance.id,
             credentialMarker = displayedKey,
         )

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="assist_screenshot_section">Системный ассистент</string>
+    <string name="assist_screenshot_toggle">Прикладывать текущий экран при вызове</string>
+    <string name="assist_screenshot_footer">При вызове Minis как системного ассистента жестом или аппаратной кнопкой текущий экран автоматически прикладывается к новому диалогу. Для снимка нужен сервис специальных возможностей; защищённые экраны не захватываются.</string>
+    <string name="minis_assistant_label">Ассистент Minis</string>
+    <string name="assist_service_summary">Назначьте Minis системным цифровым ассистентом, чтобы вызывать его жестом или кнопкой и передавать агенту контекст текущего экрана.</string>
+    <string name="assist_service_description">Minis может работать системным ассистентом Android, получать контекст текущего экрана через AssistStructure и передавать его ИИ-агенту.</string>
+</resources>
