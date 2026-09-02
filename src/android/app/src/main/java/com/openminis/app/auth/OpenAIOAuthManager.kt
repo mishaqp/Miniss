@@ -310,14 +310,25 @@ class OpenAIOAuthManager(context: Context, instanceId: String) : OAuthManager(co
     private fun parseIdToken(token: String) {
         try {
             val parts = token.split(".")
-            if (parts.size >= 2) {
-                val payload = String(java.util.Base64.getUrlDecoder().decode(parts[1]))
-                val json = JSONObject(payload)
-                accountId = json.optString("chatgpt_account_id").ifEmpty { null }
-                planType = json.optString("chatgpt_plan_type").ifEmpty { null }
-            }
+            if (parts.size < 2) return
+            val payload = String(java.util.Base64.getUrlDecoder().decode(parts[1]), Charsets.UTF_8)
+            val claims = JSONObject(payload)
+            // OpenAI currently nests the ChatGPT/Codex claims under this
+            // namespaced key. Keep the top-level fallbacks for older tokens.
+            val auth = claims.optJSONObject("https://api.openai.com/auth")
+            accountId = (auth?.optString("chatgpt_account_id") ?: "")
+                .ifBlank { claims.optString("chatgpt_account_id") }
+                .ifBlank { null }
+            planType = (auth?.optString("chatgpt_plan_type") ?: "")
+                .ifBlank { claims.optString("chatgpt_plan_type") }
+                .ifBlank { null }
+            AppLogger.info(
+                TAG,
+                "Codex identity parsed: accountPresent=" + (accountId != null) +
+                    " plan=" + (planType ?: "unknown"),
+            )
         } catch (e: Exception) {
-            AppLogger.warning(TAG, "id_token parse failed: ${e.javaClass.simpleName}: ${e.message}")
+            AppLogger.warning(TAG, "id_token parse failed: " + e.javaClass.simpleName + ": " + e.message)
         }
     }
 }
