@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="assist_overlay_prompt">Спросите о том, что на экране…</string>
+    <string name="assist_overlay_screen_attached">Текущий экран прикреплён</string>
+    <string name="assist_overlay_no_screen">Снимок экрана недоступен. Вопрос всё равно можно задать.</string>
+    <string name="assist_overlay_capturing">Снимаю текущий экран…</string>
+    <string name="assist_overlay_expand">Открыть полный чат Miniss</string>
+    <string name="assist_overlay_close">Закрыть ассистента</string>
+    <string name="assist_overlay_voice">Начать голосовой чат</string>
+    <string name="assist_overlay_send">Отправить</string>
+</resources>
