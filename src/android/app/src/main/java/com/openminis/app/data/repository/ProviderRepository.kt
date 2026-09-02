@@ -38,6 +38,7 @@ import com.openminis.app.provider.ModelsDevApi
 import com.openminis.app.provider.anthropic.AnthropicModelsApi
 import com.openminis.app.provider.gemini.GeminiModelsApi
 import com.openminis.app.provider.openai.OpenAIModelsApi
+import com.openminis.app.provider.openai.CodexModelsApi
 import com.openminis.app.provider.openrouter.OpenRouterModelsApi
 import org.json.JSONArray
 import org.json.JSONObject
@@ -2190,13 +2191,26 @@ class ProviderRepository(private val context: Context) {
 
         android.util.Log.i("ProviderRepo", "refreshModels: id=${instance.id} type=${instance.providerType} credential=${instance.credentialType} hasKey=${apiKey != null} keyLen=${apiKey?.length ?: 0} baseURL=${instance.effectiveBaseURL}")
 
-        // OpenAI Codex OAuth: use static model list (OAuth tokens can't call /v1/models)
+        // Codex OAuth has its own authenticated catalog on chatgpt.com.
+        // The generic /v1/models endpoint rejects a ChatGPT OAuth token, so
+        // fetch the live Codex catalog first and keep the static list only as
+        // an offline fallback.
         if (instance.providerType == ProviderType.openAI
             && instance.credentialType == ProviderCredential.oauth
         ) {
-            val models = OpenAIModelsApi.fetchModelsOAuth()
+            val models = runCatching {
+                CodexModelsApi.fetchModels(context, instance.id)
+            }.getOrElse { error ->
+                android.util.Log.w("ProviderRepo", "Codex model refresh failed: " + error.message)
+                emptyList()
+            }
             if (models.isNotEmpty()) {
                 replaceEntries(instance.id, models)
+                return
+            }
+            val fallback = OpenAIModelsApi.fetchModelsOAuth()
+            if (fallback.isNotEmpty()) {
+                replaceEntries(instance.id, fallback)
                 return
             }
         }
