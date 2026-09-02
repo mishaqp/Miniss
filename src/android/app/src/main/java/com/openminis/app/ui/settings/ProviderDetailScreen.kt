@@ -1004,13 +1004,25 @@ private fun CodexAccountUsageBlock(
     )
     current.usage.primary?.let {
         Text(
-            text = codexUsageText(stringResource(R.string.codex_primary_window), it),
+            text = codexUsageText(
+                stringResource(R.string.codex_primary_window),
+                it,
+                stringResource(R.string.codex_used),
+                stringResource(R.string.codex_remaining),
+                stringResource(R.string.codex_resets_in),
+            ),
             style = MaterialTheme.typography.bodySmall,
         )
     }
     current.usage.secondary?.let {
         Text(
-            text = codexUsageText(stringResource(R.string.codex_secondary_window), it),
+            text = codexUsageText(
+                stringResource(R.string.codex_secondary_window),
+                it,
+                stringResource(R.string.codex_used),
+                stringResource(R.string.codex_remaining),
+                stringResource(R.string.codex_resets_in),
+            ),
             style = MaterialTheme.typography.bodySmall,
         )
     }
@@ -1026,7 +1038,13 @@ private fun CodexAccountUsageBlock(
 private fun shortCodexAccountId(value: String): String =
     if (value.length <= 12) value else value.take(8) + "…" + value.takeLast(4)
 
-private fun codexUsageText(label: String, window: CodexUsageWindow): String {
+private fun codexUsageText(
+    label: String,
+    window: CodexUsageWindow,
+    usedLabel: String,
+    remainingLabel: String,
+    resetsInLabel: String,
+): String {
     val used = "%.0f".format(java.util.Locale.getDefault(), window.usedPercent)
     val remaining = "%.0f".format(java.util.Locale.getDefault(), window.remainingPercent)
     val reset = window.resetsAtEpochSeconds?.let {
@@ -1038,20 +1056,10 @@ private fun codexUsageText(label: String, window: CodexUsageWindow): String {
         }
     }
     return listOf(
-        label + ": " + used + "% " + stringResourcePlaceholder("used"),
-        remaining + "% " + stringResourcePlaceholder("remaining"),
-        reset?.let { stringResourcePlaceholder("reset") + " " + it },
+        label + ": " + used + "% " + usedLabel,
+        remaining + "% " + remainingLabel,
+        reset?.let { resetsInLabel + " " + it },
     ).filterNotNull().joinToString(" • ")
-}
-
-/**
- * Keep usage-window formatting in Kotlin so refreshing the live Codex state
- * does not require a ViewModel. The display labels stay intentionally short.
- */
-private fun stringResourcePlaceholder(value: String): String = when (value) {
-    "used" -> "used"
-    "remaining" -> "left"
-    else -> "resets in"
 }
 
 @Composable
