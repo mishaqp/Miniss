@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application>
+        <!-- Debug-only Gemini-style assistant prototype. The production
+             manifest keeps its normal full-screen MainActivity route until
+             this surface is proven on real devices. -->
+        <activity
+            android:name=".assist.AssistOverlayActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:finishOnTaskLaunch="true"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.Minis.AssistOverlay"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- Keep the public component name expected by the already-installed
+             AOSP LSPosed hook, but point it at the overlay for debug builds.
+             Existing VOICE_ASSIST/ASSIST intent filters are inherited from the
+             main manifest during manifest merge. -->
+        <activity-alias
+            android:name=".MainActivityVoiceAssist"
+            android:targetActivity=".assist.AssistOverlayActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            tools:replace="android:targetActivity" />
+    </application>
+</manifest>
