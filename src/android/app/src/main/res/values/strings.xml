@@ -1952,4 +1952,5 @@
     <string name="codex_resets_in">resets in</string>
     <string name="codex_usage_unavailable">Usage data is not available for this account.</string>
 
+    <string name="settings_system_permissions_subtitle">Accessibility and assistant screen capture</string>
 </resources>
