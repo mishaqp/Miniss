@@ -46,6 +46,7 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,6 +65,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import com.openminis.app.data.model.ProviderType
 import com.openminis.app.data.repository.ProviderRepository
+import com.openminis.app.data.codex.CodexAccountStatus
+import com.openminis.app.data.codex.CodexUsageRepository
+import com.openminis.app.data.codex.CodexUsageWindow
 import com.openminis.app.logging.AppLogger
 import com.openminis.app.ui.components.MinisAlertDialog
 import com.openminis.app.ui.util.bringIntoViewOnFocus
@@ -919,6 +923,135 @@ private fun OAuthCredentialBlock(
             Text(stringResource(R.string.provider_detail_sign_in))
         }
     }
+
+    if (instance.providerType == ProviderType.openAI && displayedKey.isNotEmpty()) {
+        Spacer(modifier = Modifier.height(12.dp))
+        CodexAccountUsageBlock(
+            providerInstanceId = instance.id,
+            credentialMarker = displayedKey,
+        )
+    }
+}
+
+@Composable
+private fun CodexAccountUsageBlock(
+    providerInstanceId: String,
+    credentialMarker: String,
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
+    var status by remember(providerInstanceId, credentialMarker) {
+        mutableStateOf<CodexAccountStatus?>(null)
+    }
+    var error by remember(providerInstanceId, credentialMarker) { mutableStateOf<String?>(null) }
+    var refreshing by remember(providerInstanceId, credentialMarker) { mutableStateOf(false) }
+
+    suspend fun refreshUsage() {
+        refreshing = true
+        error = null
+        runCatching {
+            CodexUsageRepository.refresh(context, providerInstanceId)
+        }.onSuccess {
+            status = it
+        }.onFailure {
+            error = it.message ?: "Unavailable"
+        }
+        refreshing = false
+    }
+
+    LaunchedEffect(providerInstanceId, credentialMarker) {
+        refreshUsage()
+    }
+
+    HorizontalDivider()
+    Spacer(modifier = Modifier.height(10.dp))
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = stringResource(R.string.codex_account_title),
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.weight(1f),
+        )
+        MinisSmallOutlinedButton(
+            onClick = { scope.launch { refreshUsage() } },
+            enabled = !refreshing,
+        ) {
+            Text(if (refreshing) stringResource(R.string.codex_loading) else stringResource(R.string.codex_refresh))
+        }
+    }
+
+    val current = status
+    if (current == null) {
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = error ?: stringResource(R.string.codex_loading),
+            style = MaterialTheme.typography.bodySmall,
+            color = if (error == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
+        )
+        return
+    }
+
+    Spacer(modifier = Modifier.height(4.dp))
+    Text(
+        text = stringResource(R.string.codex_plan, current.planType ?: "—"),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Text(
+        text = stringResource(R.string.codex_account_id, shortCodexAccountId(current.accountId)),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    current.usage.primary?.let {
+        Text(
+            text = codexUsageText(stringResource(R.string.codex_primary_window), it),
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+    current.usage.secondary?.let {
+        Text(
+            text = codexUsageText(stringResource(R.string.codex_secondary_window), it),
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+    if (current.usage.primary == null && current.usage.secondary == null) {
+        Text(
+            text = stringResource(R.string.codex_usage_unavailable),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+private fun shortCodexAccountId(value: String): String =
+    if (value.length <= 12) value else value.take(8) + "…" + value.takeLast(4)
+
+private fun codexUsageText(label: String, window: CodexUsageWindow): String {
+    val used = "%.0f".format(java.util.Locale.getDefault(), window.usedPercent)
+    val remaining = "%.0f".format(java.util.Locale.getDefault(), window.remainingPercent)
+    val reset = window.resetsAtEpochSeconds?.let {
+        val seconds = (it - System.currentTimeMillis() / 1000L).coerceAtLeast(0L)
+        when {
+            seconds >= 3600L -> (seconds / 3600L).toString() + " h"
+            seconds >= 60L -> (seconds / 60L).toString() + " min"
+            else -> seconds.toString() + " s"
+        }
+    }
+    return listOf(
+        label + ": " + used + "% " + stringResourcePlaceholder("used"),
+        remaining + "% " + stringResourcePlaceholder("remaining"),
+        reset?.let { stringResourcePlaceholder("reset") + " " + it },
+    ).filterNotNull().joinToString(" • ")
+}
+
+/**
+ * Keep usage-window formatting in Kotlin so refreshing the live Codex state
+ * does not require a ViewModel. The display labels stay intentionally short.
+ */
+private fun stringResourcePlaceholder(value: String): String = when (value) {
+    "used" -> "used"
+    "remaining" -> "left"
+    else -> "resets in"
 }
 
 @Composable
