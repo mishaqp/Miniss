@@ -438,7 +438,7 @@ private fun ScreenContextHint(context: String) {
 @Composable
 private fun AssistMessageBubble(message: ChatMessage) {
     val isUser = message.role.equals("user", ignoreCase = true)
-    val alignment = if (isUser) Alignment.CenterEnd else Alignment.CenterStart
+    val alignment = if (isUser) Alignment.End else Alignment.Start
     val bubbleColor = if (isUser) {
         MaterialTheme.colorScheme.primaryContainer
     } else {
