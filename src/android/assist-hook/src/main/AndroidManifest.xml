@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application
+        android:allowBackup="false"
+        android:label="Miniss Assist Hook">
+
+        <meta-data
+            android:name="xposedmodule"
+            android:value="true" />
+        <meta-data
+            android:name="xposedminversion"
+            android:value="93" />
+        <meta-data
+            android:name="xposeddescription"
+            android:value="Redirects AOSP/SystemUI assistant gestures directly to Miniss" />
+        <meta-data
+            android:name="xposedscope"
+            android:value="com.android.systemui" />
+
+    </application>
+</manifest>
