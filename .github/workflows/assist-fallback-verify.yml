@@ -1,9 +1,9 @@
-name: Verify System Assist Fallback
+name: Verify Eta Assist Overlay
 
 on:
   push:
     branches:
-      - fix/system-assist-launch-fallback
+      - feature/assist-overlay-eta-port
   workflow_dispatch:
 
 permissions:
@@ -65,7 +65,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Miniss-1.13-assist-fallback-debug
+          name: Miniss-1.13-eta-assist-overlay-debug
           path: src/android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
