@@ -11,6 +11,8 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // Xposed API is compileOnly for the optional assist-hook APK.
+        maven { url = uri("https://api.xposed.info/") }
         // [T-android-vad] RealTimeCutVADLibraryForAndroid ships via JitPack
         // only. Same author and same underlying stack (Silero + ONNX Runtime +
         // WebRTC APM) as the RealTimeCutVADLibrary SPM package iOS already
@@ -29,3 +31,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Minis"
 include(":app")
+include(":assist-hook")
