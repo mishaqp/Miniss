@@ -1776,4 +1776,18 @@
     <string name="chat_input_placeholder_hint_5">Minis может назначить клавише ↩︎ отправку или перенос строки</string>
     <string name="compact_progress">Сжатие… прошло %1$d с</string>
     <string name="compact_progress_split">Сжатие… %1$d с · сводка по частям (%2$d/%3$d)</string>
+
+    <!-- Аккаунт Codex и живые лимиты -->
+    <string name="codex_account_title">Аккаунт Codex</string>
+    <string name="codex_plan">Тариф: %1$s</string>
+    <string name="codex_account_id">Аккаунт: %1$s</string>
+    <string name="codex_refresh">Обновить</string>
+    <string name="codex_loading">Загрузка…</string>
+    <string name="codex_primary_window">Основной лимит</string>
+    <string name="codex_secondary_window">Дополнительный лимит</string>
+    <string name="codex_used">использовано</string>
+    <string name="codex_remaining">осталось</string>
+    <string name="codex_resets_in">сброс через</string>
+    <string name="codex_usage_unavailable">Данные о лимитах для этого аккаунта недоступны.</string>
+
 </resources>
