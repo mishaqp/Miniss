@@ -8,7 +8,8 @@ import android.os.Bundle;
 import android.os.SystemClock;
 import android.util.Log;
 
-import de.robv.android.xposed.AndroidAppHelper;
+import java.lang.reflect.Field;
+
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
@@ -186,21 +187,47 @@ public final class SystemAssistRedirect implements IXposedHookLoadPackage {
         return null;
     }
 
+    /**
+     * Resolve a Context without depending on AndroidAppHelper. The classic
+     * Xposed API artifact used for compilation does not expose that helper,
+     * while SystemUI's AssistManager has carried mContext for years. For ROMs
+     * that rename it, scan instance fields up the class hierarchy and take the
+     * first Context-valued field. If both approaches fail we simply leave the
+     * stock assistant path untouched.
+     */
     private static Context resolveContext(Object assistManager) {
-        if (assistManager != null) {
-            try {
-                Object value = XposedHelpers.getObjectField(assistManager, "mContext");
-                if (value instanceof Context) return (Context) value;
-            } catch (Throwable ignored) {
-                // Field name is stable in AOSP, but use the process Application
-                // as a fallback for ROMs that rename or wrap it.
-            }
-        }
+        if (assistManager == null) return null;
+
         try {
-            return AndroidAppHelper.currentApplication();
+            Object value = XposedHelpers.getObjectField(assistManager, "mContext");
+            if (value instanceof Context) return (Context) value;
         } catch (Throwable ignored) {
-            return null;
+            // Fall through to a ROM-agnostic field scan.
         }
+
+        Class<?> current = assistManager.getClass();
+        while (current != null && current != Object.class) {
+            Field[] fields;
+            try {
+                fields = current.getDeclaredFields();
+            } catch (Throwable ignored) {
+                current = current.getSuperclass();
+                continue;
+            }
+
+            for (Field field : fields) {
+                if (!Context.class.isAssignableFrom(field.getType())) continue;
+                try {
+                    field.setAccessible(true);
+                    Object value = field.get(assistManager);
+                    if (value instanceof Context) return (Context) value;
+                } catch (Throwable ignored) {
+                    // Try the next candidate field.
+                }
+            }
+            current = current.getSuperclass();
+        }
+        return null;
     }
 
     private static void log(String message) {
