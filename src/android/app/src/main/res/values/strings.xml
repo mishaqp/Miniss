@@ -1938,4 +1938,18 @@
     <!-- [T-android-compact-progress] Live status while a compaction runs. -->
     <string name="compact_progress">Compacting… %1$d s elapsed</string>
     <string name="compact_progress_split">Compacting… %1$d s · summarizing in segments (%2$d/%3$d)</string>
+
+    <!-- Codex account and live rate-limit status -->
+    <string name="codex_account_title">Codex account</string>
+    <string name="codex_plan">Plan: %1$s</string>
+    <string name="codex_account_id">Account: %1$s</string>
+    <string name="codex_refresh">Refresh</string>
+    <string name="codex_loading">Loading…</string>
+    <string name="codex_primary_window">Primary limit</string>
+    <string name="codex_secondary_window">Secondary limit</string>
+    <string name="codex_used">used</string>
+    <string name="codex_remaining">remaining</string>
+    <string name="codex_resets_in">resets in</string>
+    <string name="codex_usage_unavailable">Usage data is not available for this account.</string>
+
 </resources>
