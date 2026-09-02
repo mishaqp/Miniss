@@ -499,9 +499,25 @@ class MainActivity : ComponentActivity() {
         // while inside a chat, synthesise an OpenSession deep-link so
         // the navigation stack lands on that chat instead of the
         // sessions list. T166.
+        //
+        // [T-system-assist] A VOICE_ASSIST / ASSIST activity entry (the
+        // .MainActivityVoiceAssist alias — ROM gesture/hardware-key route)
+        // carries no minis:// data, so DeepLinkHandler.parse yields Unknown.
+        // Route it to OpenAssist (new chat) explicitly, mirroring the runtime
+        // onNewIntent path, so a cold-start via the gesture also lands on a
+        // fresh chat that consumes any pendingAssist context.
         val explicitDeepLink = DeepLinkHandler.parse(intent?.data)
         val launchDeepLink = if (explicitDeepLink !is DeepLinkAction.Unknown) {
             explicitDeepLink
+        } else if (isAssistEntryIntent(intent)) {
+            // [T-assist-screenshot] HyperOS 路线冷启动入口：窗口尚未上屏，
+            // 在此尽早发射无障碍截屏，供 ChatScreen 首条消息附带。
+            com.openminis.app.assist.AssistCapture.requestIfEnabled(this, intent)
+            // [T-assist-screenshot] HyperOS 路线没有 AssistSession 写 pendingAssist，
+            // 这里放一个空占位作为"本次新会话是 assist 唤起"的消费门闩：
+            // ChatScreen 见到它才会去等在途截图并注入，普通手开会话不受影响。
+            com.openminis.app.deeplink.DeepLinkCoordinator.setPendingAssist(null)
+            DeepLinkAction.OpenAssist
         } else {
             restoredChatSessionId
                 ?.let { DeepLinkAction.OpenSession(it) }
@@ -706,12 +722,46 @@ class MainActivity : ComponentActivity() {
         if (intent.getBooleanExtra("shared_content", false)) {
             com.openminis.app.share.ShareCoordinator.processPendingShare(this)
         }
-        handleDeepLink(intent.data)
+        handleDeepLink(intent)
     }
 
-    private fun handleDeepLink(uri: Uri?) {
-        val action = DeepLinkHandler.parse(uri)
+    /**
+     * [T-system-assist] True when [intent] arrived through the
+     * `.MainActivityVoiceAssist` activity-alias — i.e. the system invoked us
+     * as the default assistant via `android.intent.action.VOICE_ASSIST` /
+     * `android.intent.action.ASSIST` (ROM gesture-bar / hardware-key route).
+     * Excludes genuine `minis://` deep-links so those keep their dedicated
+     * dispatch. Mirrors the iOS `ACTION_VOICE_ASSIST` / `ACTION_ASSIST`
+     * handling in AppDelegate.
+     */
+    private fun isAssistEntryIntent(intent: Intent?): Boolean {
+        val action = intent?.action
+        // ACTION_VOICE_ASSIST has no public Java constant on Intent
+        // (only ACTION_ASSIST does), so match the raw action string here —
+        // mirroring the value declared in the .MainActivityVoiceAssist alias.
+        if (action != Intent.ACTION_ASSIST && action != "android.intent.action.VOICE_ASSIST") return false
+        val uri = intent.data
+        return uri == null || uri.scheme != "minis"
+    }
+
+    private fun handleDeepLink(intent: Intent?) {
         val nav = navController ?: return
+        // [T-assist-screenshot] 热启动 assist 入口同样尽早发射截屏（窗口上屏前）。
+        if (isAssistEntryIntent(intent)) {
+            com.openminis.app.assist.AssistCapture.requestIfEnabled(this, intent)
+            // 空占位门闩，语义同冷启动路径。
+            com.openminis.app.deeplink.DeepLinkCoordinator.setPendingAssist(null)
+        }
+        // [T-system-assist] A VOICE_ASSIST / ASSIST activity entry carries no
+        // minis:// data; fold it into OpenAssist so it reuses the exact same
+        // "new chat" navigation path (ChatScreen consumes
+        // DeepLinkCoordinator.pendingAssist if the VIS path wrote context
+        // first, otherwise it's a plain new session).
+        val action = if (isAssistEntryIntent(intent)) {
+            DeepLinkAction.OpenAssist
+        } else {
+            DeepLinkHandler.parse(intent?.data)
+        }
         when (action) {
             is DeepLinkAction.OpenTerminal -> {
                 nav.navigate(Routes.terminal(action.initCommand))
@@ -755,7 +805,8 @@ class MainActivity : ComponentActivity() {
             // the corresponding UI on first compose.
             is DeepLinkAction.NewChat,
             is DeepLinkAction.NewVoiceChat,
-            is DeepLinkAction.NewCameraChat -> {
+            is DeepLinkAction.NewCameraChat,
+            is DeepLinkAction.OpenAssist -> {
                 when (action) {
                     is DeepLinkAction.NewVoiceChat -> DeepLinkCoordinator
                         .setPendingChatAction(DeepLinkCoordinator.ChatAction.START_VOICE)

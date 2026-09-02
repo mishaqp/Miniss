@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="assist_screenshot_section">System Assist</string>
+    <string name="assist_screenshot_toggle">Attach current screen when invoked</string>
+    <string name="assist_screenshot_footer">When launched as the system assistant (gesture / hardware key), automatically attach a screenshot of the current screen to the new conversation. Requires the accessibility service; secure screens cannot be captured and silently fall back.</string>
+    <string name="minis_assistant_label">Minis Assistant</string>
+    <string name="assist_service_summary">Set Minis as the default digital assistant to invoke it with system gestures or hardware keys and pass the current screen to the agent.</string>
+    <string name="assist_service_description">Minis can act as the Android system assistant, receive current-screen AssistStructure context and hand it to the AI agent.</string>
+</resources>
