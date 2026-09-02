@@ -47,6 +47,7 @@ import com.openminis.app.sandbox.offload.LocationOffloadHandler
 import com.openminis.app.sandbox.offload.ModelUseOffloadHandler
 import com.openminis.app.sandbox.offload.SessionsOffloadHandler
 import com.openminis.app.sandbox.offload.ShizukuOffloadHandler
+import com.openminis.app.sandbox.offload.RootOffloadHandler
 import com.openminis.app.sandbox.offload.NotificationOffloadHandler
 import com.openminis.app.sandbox.offload.OpenOffloadHandler
 import com.openminis.app.sandbox.offload.PhotosOffloadHandler
@@ -572,6 +573,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         // user hasn't installed / started / authorized Shizuku, so we
         // can register unconditionally; ShizukuManager.init below wires
         // up the binder lifecycle listeners + StateFlow.
+        NativeOffloadServer.register("android-root-cli", RootOffloadHandler())
         NativeOffloadServer.register("android-shizuku-cli", ShizukuOffloadHandler(this))
         com.openminis.app.offload.ShizukuManager.init(this)
 
