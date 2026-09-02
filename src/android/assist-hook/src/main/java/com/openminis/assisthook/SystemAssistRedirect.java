@@ -17,18 +17,16 @@ import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
 
 /**
- * Optional AOSP/Evolution X assist redirect for Miniss.
+ * Evolution X / AOSP assistant bridge for Miniss.
  *
- * The normal Android path is:
- * gesture / power key -> SystemUI AssistManager.startAssist(Bundle)
- * -> VoiceInteractionManagerService -> active VoiceInteractionService.
+ * Hooks SystemUI's AssistManager.startAssist(...) and redirects hardware or
+ * gesture invocations to Miniss' exported AssistTriggerService. The service is
+ * used instead of launching MainActivity directly so Miniss can capture the
+ * current screen before its own window becomes foreground, mark the invocation
+ * as an assist request, then open a fresh chat through the normal NewChat route.
  *
- * On the current Android 17 device the active assistant is correctly set to
- * Miniss, but the VIS session may never become visible. This LSPosed module
- * hooks the stable SystemUI AssistManager entry point and opens Miniss' explicit
- * MainActivityVoiceAssist alias directly. The original SystemUI path is only
- * suppressed after the direct launch succeeds; otherwise Android's stock flow
- * is left untouched as a fail-open fallback.
+ * The stock Android assistant flow is suppressed only after startService()
+ * succeeds. Any ROM/API mismatch fails open and leaves SystemUI untouched.
  */
 public final class SystemAssistRedirect implements IXposedHookLoadPackage {
 
@@ -36,12 +34,9 @@ public final class SystemAssistRedirect implements IXposedHookLoadPackage {
     private static final String SYSTEM_UI = "com.android.systemui";
 
     private static final String MINIS_PACKAGE = "com.openminis.app";
-    private static final String MINIS_ASSIST_ACTIVITY =
-            "com.openminis.app.MainActivityVoiceAssist";
-    private static final String ACTION_VOICE_ASSIST =
-            "android.intent.action.VOICE_ASSIST";
+    private static final String MINIS_TRIGGER_SERVICE =
+            "com.openminis.app.assist.AssistTriggerService";
 
-    // Consumed by Miniss AssistCapture.
     private static final String EXTRA_ATTACH_SCREEN =
             "com.openminis.hook.attach_screen";
     private static final String EXTRA_INVOCATION_TYPE =
@@ -100,9 +95,8 @@ public final class SystemAssistRedirect implements IXposedHookLoadPackage {
                     ? args.getInt("invocation_type", INVOCATION_UNKNOWN)
                     : INVOCATION_UNKNOWN;
 
-            // Voice hotword and search-bar invocations are intentionally left to
-            // the stock framework. This module targets hardware/gesture entry
-            // points only, avoiding surprising interception of unrelated flows.
+            // Keep voice hotword / search bar on the stock path. This module is
+            // intentionally scoped to the physical/system assistant gestures.
             if (!isDirectGestureType(invocationType)) {
                 log("pass through invocation_type=" + invocationType);
                 return;
@@ -110,8 +104,6 @@ public final class SystemAssistRedirect implements IXposedHookLoadPackage {
 
             long now = SystemClock.elapsedRealtime();
             if (now - lastRedirectElapsed < DEBOUNCE_MS) {
-                // Suppress duplicate callbacks only after one redirect already
-                // succeeded in the debounce window.
                 param.setResult(null);
                 log("duplicate invocation suppressed type=" + invocationType);
                 return;
@@ -125,39 +117,36 @@ public final class SystemAssistRedirect implements IXposedHookLoadPackage {
 
             ComponentName target = new ComponentName(
                     MINIS_PACKAGE,
-                    MINIS_ASSIST_ACTIVITY
+                    MINIS_TRIGGER_SERVICE
             );
 
-            // Verify the Miniss entry exists before suppressing the system path.
             try {
-                context.getPackageManager().getActivityInfo(target, 0);
+                context.getPackageManager().getServiceInfo(target, 0);
             } catch (PackageManager.NameNotFoundException notInstalled) {
-                log("Miniss assist activity not installed; falling back to stock assist");
+                log("Miniss trigger service not installed; falling back to stock assist");
                 return;
             }
 
             boolean attachScreen = invocationType != INVOCATION_POWER_LONG_PRESS;
-            Intent intent = new Intent(ACTION_VOICE_ASSIST)
+            Intent intent = new Intent()
                     .setComponent(target)
                     .putExtra(EXTRA_ATTACH_SCREEN, attachScreen)
-                    .putExtra(EXTRA_INVOCATION_TYPE, invocationType)
-                    .addFlags(
-                            Intent.FLAG_ACTIVITY_NEW_TASK
-                                    | Intent.FLAG_ACTIVITY_CLEAR_TOP
-                                    | Intent.FLAG_ACTIVITY_SINGLE_TOP
-                    );
+                    .putExtra(EXTRA_INVOCATION_TYPE, invocationType);
 
-            context.startActivity(intent);
+            ComponentName started = context.startService(intent);
+            if (started == null) {
+                log("startService returned null; falling back to stock assist");
+                return;
+            }
+
             lastRedirectElapsed = now;
-
-            // startAssist() returns void. Setting null short-circuits SystemUI's
-            // broken VIS path only after our direct launch has succeeded.
             param.setResult(null);
             log("redirected invocation_type=" + invocationType
-                    + " attach_screen=" + attachScreen);
+                    + " attach_screen=" + attachScreen
+                    + " via AssistTriggerService");
         } catch (Throwable t) {
-            // Fail open: never break the system assistant gesture if our module
-            // encounters a ROM-specific change.
+            // Fail open: a SystemUI internal change must never break the stock
+            // assistant gesture path.
             log("redirect failed, stock assist will continue: " + t);
         }
     }
@@ -187,14 +176,6 @@ public final class SystemAssistRedirect implements IXposedHookLoadPackage {
         return null;
     }
 
-    /**
-     * Resolve a Context without depending on AndroidAppHelper. The classic
-     * Xposed API artifact used for compilation does not expose that helper,
-     * while SystemUI's AssistManager has carried mContext for years. For ROMs
-     * that rename it, scan instance fields up the class hierarchy and take the
-     * first Context-valued field. If both approaches fail we simply leave the
-     * stock assistant path untouched.
-     */
     private static Context resolveContext(Object assistManager) {
         if (assistManager == null) return null;
 
